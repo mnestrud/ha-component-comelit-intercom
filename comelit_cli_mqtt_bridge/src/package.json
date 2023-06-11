@@ -1,0 +1,23 @@
+{
+  "name": "comelit-cli-ha-mqtt-bridge",
+  "version": "0.0.1",
+  "description": "MQTT bridge for the Comelit CLI library to interface with Home Assistant",
+  "main": "mqtt-client.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node mqtt-client.js"
+  },
+  "keywords": [
+    "comelit",
+    "mqtt",
+    "home assistant"
+  ],
+  "author": "Nicolas Fricke",
+  "license": "ISC",
+  "dependencies": {
+    "comelit-client": "^2.5.1",
+    "mqtt": "^4.3.7",
+    "yaml": "^2.3.1"
+  },
+  "type": "module"
+}
