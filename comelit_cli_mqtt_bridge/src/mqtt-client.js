@@ -1,6 +1,7 @@
 import { connect } from "mqtt"; // import connect from mqtt
 import { listDoors, openDoor } from "./comelit-icona-interface.js";
 import * as packageJSON from "./package.json" assert { type: "json" };
+import { logger } from "./logger.js"
 
 const haDiscoveryPrefix = "homeassistant";
 const nodeId = "comelitbridge";
@@ -39,7 +40,7 @@ const topicDoorMapping = availableDoors.reduce((topicDoorMapping, door) => {
   return topicDoorMapping;
 }, {});
 
-console.log(`\nConnecting to MQTT server ${mqttHost}:${mqttPort} as user ${mqttUsername}...`);
+logger.log(`\nConnecting to MQTT server ${mqttHost}:${mqttPort} as user ${mqttUsername}...`);
 let client = connect({
   servers: [
     {
@@ -58,7 +59,7 @@ let client = connect({
 });
 
 client.on("connect", () => {
-  console.log(`↳ done\n`);
+  logger.log(`↳ done\n`);
 
   // Not ready to process messages yet
   client.publish(availabilityTopic, "offline", { retain: true });
@@ -68,7 +69,7 @@ client.on("connect", () => {
 
     const haDiscoveryTopic = `${haDiscoveryPrefix}/button/${nodeId}/${door.entityId}/config`;
 
-    console.log(`\nSetting up discovery for door "${door.name}"...`);
+    logger.log(`\nSetting up discovery for door "${door.name}"...`);
 
     client.publish(
       haDiscoveryTopic,
@@ -92,17 +93,17 @@ client.on("connect", () => {
       })
     );
 
-    console.log(`↳ done\n`);
+    logger.log(`↳ done\n`);
 
     client.subscribe(controlTopic, (error) => {
       if (error) {
-        console.error(
+        logger.error(
           `Could not connect to topic "${controlTopic}" because of error: ${error}\n`
         );
         return;
       }
 
-      console.log(
+      logger.log(
         `\nSuccessfully subscribed to open commands for door "${door.name}" via "${controlTopic}" MQTT topic\n\n`
       );
 
@@ -112,17 +113,17 @@ client.on("connect", () => {
 
   client.on("message", (topic, _message) => {
     const doorName = topicDoorMapping[topic].name;
-    console.log(`\n\n--> Received message on topic ${topic}\n\n`);
+    logger.log(`\n\n--> Received message on topic ${topic}\n\n`);
     openDoor(comelitIpAddress, comelitToken, doorName);
   });
 
   client.on("disconnect", () => {
-    console.log(`\n\n--> Received message to disconnect\n\n`);
+    logger.log(`\n\n--> Received message to disconnect\n\n`);
     client.publish(availabilityTopic, "offline", { retain: true });
   });
 
   client.on("offline", () => {
-    console.log(`\n\n--> Received message that client goes offline\n\n`);
+    logger.log(`\n\n--> Received message that client goes offline\n\n`);
     client.publish(availabilityTopic, "offline", { retain: true });
   });
 });
