@@ -89,7 +89,7 @@ client.on("connect", () => {
         icon: "mdi:door-open",
         name: door.name,
         unique_id: door.entityId,
-        retain: false,
+        retain: true,
       })
     );
 

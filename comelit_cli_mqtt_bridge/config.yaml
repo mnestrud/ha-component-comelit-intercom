@@ -1,6 +1,6 @@
 name: "Comelit CLI MQTT Bridge"
 description: "Allow owners of a Comelit WiFi intercom system to open the door "
-version: "0.0.1"
+version: "0.0.2"
 slug: "comelit_cli_mqtt_bridge"
 init: false
 arch:
