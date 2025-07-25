@@ -1,0 +1,11 @@
+{
+  "domain": "comelit",
+  "name": "Comelit Intercom",
+  "codeowners": ["@nicolas-fricke"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/nicolas-fricke/home-assistant-add-ons",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}

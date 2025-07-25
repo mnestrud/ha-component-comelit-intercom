@@ -1,7 +1,14 @@
 import { connect } from "mqtt"; // import connect from mqtt
 import { listDoors, openDoor } from "./comelit-icona-interface.js";
-import * as packageJSON from "./package.json" assert { type: "json" };
-import { logger } from "./logger.js"
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { logger } from "./logger.js";
+
+// Load package.json using fs since Node.js v22 doesn't support assert { type: "json" }
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJSON = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8"))
 
 const haDiscoveryPrefix = "homeassistant";
 const nodeId = "comelitbridge";
