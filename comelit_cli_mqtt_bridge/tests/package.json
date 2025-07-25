@@ -1,0 +1,13 @@
+{
+  "name": "comelit-protocol-tests",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Protocol capture and analysis for Comelit ICONA Bridge",
+  "scripts": {
+    "capture": "node protocol-capture.js",
+    "test": "bash run-protocol-tests.sh"
+  },
+  "dependencies": {
+    "comelit-client": "^3.0.0"
+  }
+}

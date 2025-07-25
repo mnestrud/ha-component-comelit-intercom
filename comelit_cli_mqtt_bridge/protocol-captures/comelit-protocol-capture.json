@@ -1,0 +1,28 @@
+[
+  {
+    "timestamp": 0,
+    "level": "info",
+    "message": "Starting protocol capture",
+    "host": "10.0.1.49",
+    "port": 64100
+  },
+  {
+    "timestamp": 2,
+    "level": "info",
+    "message": "Connecting to 10.0.1.49:64100"
+  },
+  {
+    "timestamp": 2,
+    "level": "info",
+    "message": "CONNECT",
+    "port": 64100,
+    "host": "10.0.1.49"
+  },
+  {
+    "timestamp": 3,
+    "level": "error",
+    "message": "Error during protocol capture",
+    "error": "connect EHOSTUNREACH 10.0.1.49:64100 - Local (10.0.1.8:51690)",
+    "stack": "Error: connect EHOSTUNREACH 10.0.1.49:64100 - Local (10.0.1.8:51690)\n    at internalConnect (node:net:1098:16)\n    at defaultTriggerAsyncIdScope (node:internal/async_hooks:464:18)\n    at node:net:1328:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:77:11)"
+  }
+]

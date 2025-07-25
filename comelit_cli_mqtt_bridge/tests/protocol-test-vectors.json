@@ -1,0 +1,46 @@
+[
+  {
+    "name": "open_uaut_channel",
+    "description": "Open authentication channel",
+    "input": {
+      "request_id": 8001,
+      "sequence": 1,
+      "channel": "UAUT"
+    },
+    "expected_hex": "00060c0000000000cdab01000800000055415554411f00"
+  },
+  {
+    "name": "auth_message",
+    "description": "Send authentication token",
+    "input": {
+      "request_id": 8001,
+      "token": "9943a85362467c53586e3553d34f8a8d"
+    },
+    "expected_hex": "00066c00411f00007b226d657373616765223a22616363657373222c22757365722d746f6b656e223a223939343361383533363234363763353335383665333535336433346638613864222c226d6573736167652d74797065223a2272657175657374222c226d6573736167652d6964223a327d"
+  },
+  {
+    "name": "get_config",
+    "description": "Get configuration with addressbook",
+    "input": {
+      "request_id": 8002,
+      "addressbooks": "all"
+    },
+    "expected_hex": "00065c00421f00007b226d657373616765223a226765742d636f6e66696775726174696f6e222c2261646472657373626f6f6b73223a22616c6c222c226d6573736167652d74797065223a2272657175657374222c226d6573736167652d6964223a337d"
+  },
+  {
+    "name": "open_door",
+    "description": "Send open door command",
+    "input": {
+      "request_id": 8003,
+      "vip": {
+        "apt-address": "100",
+        "apt-subaddress": "1"
+      },
+      "door_item": {
+        "apt-address": "100",
+        "output-index": "1"
+      }
+    },
+    "expected_hex": "00061600431f000000185c8b2c740000ffffffff31303031003130300000"
+  }
+]

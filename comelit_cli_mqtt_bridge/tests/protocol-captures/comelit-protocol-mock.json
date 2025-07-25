@@ -1,0 +1,126 @@
+[
+  {
+    "timestamp": 0,
+    "level": "info",
+    "message": "CONNECT",
+    "port": 64100,
+    "host": "10.0.1.49"
+  },
+  {
+    "timestamp": 100,
+    "level": "info",
+    "message": "CONNECTED",
+    "port": 64100,
+    "host": "10.0.1.49"
+  },
+  {
+    "timestamp": 200,
+    "level": "WRITE",
+    "message": "Open UAUT channel",
+    "operationId": 1,
+    "bytes": "00 06 0c 00 01 20 00 00 cd ab 01 00 08 00 00 00 55 41 55 54 00 01 20 00",
+    "length": 24,
+    "ascii": ".......... ......UAUT.. .",
+    "comment": "COMMAND message (0xabcd) with sequence 1, channel UAUT"
+  },
+  {
+    "timestamp": 300,
+    "level": "READ",
+    "message": "UAUT channel response",
+    "operationId": 1,
+    "bytes": "00 06 04 00 00 00 00 00 cd ab 02 00",
+    "length": 12,
+    "ascii": "................",
+    "comment": "Channel opened, sequence 2"
+  },
+  {
+    "timestamp": 400,
+    "level": "WRITE",
+    "message": "Authentication request",
+    "operationId": 2,
+    "bytes": "00 06 6c 00 01 20 00 00 7b 22 6d 65 73 73 61 67 65 22 3a 22 61 63 63 65 73 73 22 2c 22 75 73 65 72 2d 74 6f 6b 65 6e 22 3a 22 39 39 34 33 61 38 35 33 36 32 34 36 37 63 35 33 35 38 36 65 33 35 35 33 64 33 34 66 38 61 38 64 22 2c 22 6d 65 73 73 61 67 65 2d 74 79 70 65 22 3a 22 72 65 71 75 65 73 74 22 2c 22 6d 65 73 73 61 67 65 2d 69 64 22 3a 32 7d",
+    "length": 116,
+    "ascii": "......{\"message\":\"access\",\"user-token\":\"9943a85362467c53586e3553d34f8a8d\",\"message-type\":\"request\",\"message-id\":2}",
+    "comment": "JSON authentication message"
+  },
+  {
+    "timestamp": 500,
+    "level": "READ",
+    "message": "Authentication response",
+    "operationId": 2,
+    "bytes": "00 06 2a 00 01 20 00 00 7b 22 72 65 73 70 6f 6e 73 65 2d 63 6f 64 65 22 3a 32 30 30 2c 22 6d 65 73 73 61 67 65 2d 74 79 70 65 22 3a 22 72 65 73 70 6f 6e 73 65 22 7d",
+    "length": 50,
+    "ascii": "......*... .{\"response-code\":200,\"message-type\":\"response\"}",
+    "comment": "Authentication successful"
+  },
+  {
+    "timestamp": 600,
+    "level": "WRITE",
+    "message": "Close UAUT channel",
+    "operationId": 3,
+    "bytes": "00 06 04 00 01 20 00 00 ef 01 03 00",
+    "length": 12,
+    "ascii": ".......... ...",
+    "comment": "END message (0x01ef) with sequence 3"
+  },
+  {
+    "timestamp": 700,
+    "level": "WRITE",
+    "message": "Open UCFG channel",
+    "operationId": 4,
+    "bytes": "00 06 0c 00 02 20 00 00 cd ab 01 00 08 00 00 00 55 43 46 47 00 02 20 00",
+    "length": 24,
+    "ascii": ".......... ......UCFG.. .",
+    "comment": "COMMAND message with channel UCFG"
+  },
+  {
+    "timestamp": 800,
+    "level": "WRITE",
+    "message": "Get configuration request",
+    "operationId": 5,
+    "bytes": "00 06 5c 00 02 20 00 00 7b 22 6d 65 73 73 61 67 65 22 3a 22 67 65 74 2d 63 6f 6e 66 69 67 75 72 61 74 69 6f 6e 22 2c 22 61 64 64 72 65 73 73 62 6f 6f 6b 73 22 3a 22 61 6c 6c 22 2c 22 6d 65 73 73 61 67 65 2d 74 79 70 65 22 3a 22 72 65 71 75 65 73 74 22 2c 22 6d 65 73 73 61 67 65 2d 69 64 22 3a 33 7d",
+    "length": 100,
+    "ascii": "......{\"message\":\"get-configuration\",\"addressbooks\":\"all\",\"message-type\":\"request\",\"message-id\":3}",
+    "comment": "JSON get-configuration message"
+  },
+  {
+    "timestamp": 900,
+    "level": "WRITE",
+    "message": "Open CTPP channel",
+    "operationId": 6,
+    "bytes": "00 06 14 00 03 20 00 00 cd ab 01 00 0c 00 00 00 43 54 50 50 00 03 20 31 30 30 31 00",
+    "length": 28,
+    "ascii": ".......... ......CTPP.. 1001.",
+    "comment": "COMMAND message with channel CTPP and apartment address"
+  },
+  {
+    "timestamp": 1000,
+    "level": "WRITE",
+    "message": "Init door open",
+    "operationId": 7,
+    "bytes": "00 06 1c 00 03 20 00 00 c0 18 5c 8b 2b 73 00 11 00 40 ac 23 31 30 30 31 00 10 0e 00 00 00 00 ff ff ff ff 31 30 30 31 00 31 30 30 00",
+    "length": 44,
+    "ascii": ".......... ...\\+s...@.#1001......1001.100.",
+    "comment": "Binary door init message"
+  },
+  {
+    "timestamp": 1100,
+    "level": "WRITE",
+    "message": "Open door command",
+    "operationId": 8,
+    "bytes": "00 06 18 00 03 20 00 00 00 18 5c 8b 2c 74 00 00 ff ff ff ff 31 30 30 31 31 00 31 30 30 00",
+    "length": 32,
+    "ascii": ".......... ..\\.,t....10011.100.",
+    "comment": "Binary open door message (0x1800)"
+  },
+  {
+    "timestamp": 1200,
+    "level": "WRITE",
+    "message": "Open door confirm",
+    "operationId": 9,
+    "bytes": "00 06 18 00 03 20 00 00 20 18 5c 8b 2c 74 00 00 ff ff ff ff 31 30 30 31 31 00 31 30 30 00",
+    "length": 32,
+    "ascii": ".......... ..\\.,t....10011.100.",
+    "comment": "Binary open door confirm (0x1820)"
+  }
+]
