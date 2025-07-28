@@ -4,14 +4,18 @@
       "user": {
         "data": {
           "host": "IP Address",
-          "token": "User Token"
+          "token": "Token (optional)"
         },
-        "description": "Enter the IP address of your Comelit device and the user token."
+        "description": "Enter the IP address of your Comelit device. Token is optional - if not provided, it will be extracted automatically using the default 'comelit' password.",
+        "data_description": {
+          "token": "Leave empty to automatically extract using default password"
+        }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect to the device",
       "invalid_auth": "Invalid authentication token",
+      "auto_token_failed": "Failed to extract token automatically. Please check that the device is accessible and using the default 'comelit' password, or enter your token manually.",
       "unknown": "Unexpected error"
     },
     "abort": {

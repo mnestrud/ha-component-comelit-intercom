@@ -5,16 +5,18 @@ This is a native Home Assistant integration for Comelit ICONA Bridge intercom sy
 ## Features
 
 - Direct TCP communication with Comelit devices (no MQTT bridge needed)
+- **Automatic token extraction** - no manual token retrieval required (if using default password)
 - Automatic discovery of all available doors
 - Creates button entities for each door
 - Simple configuration through Home Assistant UI
+- Works with Comelit devices using the ICONA Bridge protocol
 
 ## Requirements
 
 - Home Assistant 2023.1 or newer
-- Comelit intercom with WiFi connectivity (e.g., Comelit 6741w)
+- Comelit intercom with WiFi connectivity (e.g., Comelit 6741W, 6721W)
 - Comelit device IP address
-- User token from your Comelit device
+- Device must be accessible on port 64100 (ICONA Bridge) and port 8080 (web interface for token extraction)
 
 ## Installation
 
@@ -24,7 +26,8 @@ This is a native Home Assistant integration for Comelit ICONA Bridge intercom sy
 2. Restart Home Assistant
 3. Go to Settings → Devices & Services
 4. Click "Add Integration" and search for "Comelit"
-5. Enter your device's IP address and user token
+5. Enter your device's IP address
+6. Leave the token field empty for automatic extraction, or provide your token if you know it
 
 ### HACS Installation (Coming Soon)
 
@@ -32,61 +35,168 @@ This integration will be submitted to HACS for easier installation.
 
 ## Configuration
 
-You'll need:
-1. **IP Address**: The IP address of your Comelit device on your network
-2. **User Token**: Follow the instructions at https://github.com/madchicken/comelit-client/wiki/Get-your-user-token-for-ICONA-Bridge
+### Automatic Token Extraction
+
+The integration can automatically extract your authentication token if your device uses the default 'comelit' password. Here's how it works:
+
+1. Logs into your device's web interface (port 8080) using the default password
+2. Creates a new configuration backup on the device
+3. Downloads the most recent backup file
+4. Extracts and parses the `users.cfg` file from the backup archive
+5. Finds your authentication token using the pattern `9:4:"<token>"`
+
+This process takes about 10-30 seconds and happens automatically during setup.
+
+### Manual Token Extraction
+
+If automatic extraction fails (e.g., you've changed the default password), you'll need to obtain the token manually. Follow the excellent guide by madchicken:
+https://github.com/madchicken/comelit-client/wiki/Get-your-user-token-for-ICONA-Bridge
 
 ## Usage
 
 After configuration, the integration will:
 1. Connect to your Comelit device
-2. Discover all available doors
-3. Create a button entity for each door
+2. Authenticate using your token
+3. Discover all available doors
+4. Create a button entity for each door (e.g., `button.comelit_front_door_unlatch`)
 
 You can then:
 - Add door buttons to your dashboard
-- Create automations to open doors
-- Use with voice assistants
+- Create automations to open doors based on events
+- Use with voice assistants ("Hey Google, press the front door button")
 - Include in scripts and scenes
+- Trigger from presence detection, NFC tags, etc.
 
-## Architecture
+## How It Works
 
-This integration includes:
-- **comelit_client.py**: Python implementation of the Comelit ICONA Bridge protocol
-- **config_flow.py**: Configuration UI for easy setup
-- **coordinator.py**: Data update coordinator for efficient API calls
+### Protocol Overview
+
+The Comelit ICONA Bridge uses a custom binary/JSON hybrid protocol over TCP port 64100. This integration implements the protocol natively in Python.
+
+#### Message Structure
+
+All messages have an 8-byte header followed by a variable-length body:
+
+```
+Header (8 bytes):
+[0x00, 0x06]     - Magic bytes (constant)
+[XX, XX]         - Body length (uint16, little endian)
+[RR, RR]         - Request ID (uint16, little endian)
+[0x00, 0x00]     - Padding
+
+Body:
+- JSON messages: Start with '{' (0x7b)
+- Binary messages: Custom format based on message type
+```
+
+#### Channel-Based Communication
+
+The protocol uses channels for different operations:
+- **UAUT**: Authentication channel
+- **UCFG**: Configuration channel (get door list)
+- **CTPP**: Control channel (open doors)
+- **INFO**: Server information
+- **PUSH**: Push notifications
+
+Each operation follows this pattern:
+1. Open channel with COMMAND message (0xabcd)
+2. Perform operations on the channel
+3. Close channel with END message (0x01ef)
+
+#### Door Opening Sequence
+
+Opening a door involves:
+1. Open CTPP channel with the apartment address
+2. Send initialization message (0x18c0) with door parameters
+3. Send open door command (0x1800)
+4. Send open door confirmation (0x1820)
+
+The binary messages contain apartment addresses, output indices, and specific byte patterns that the device expects.
+
+### Architecture
+
+The integration consists of:
+- **comelit_client.py**: Python implementation of the ICONA Bridge protocol
+- **token_extractor.py**: Automatic token extraction from device backups
+- **config_flow.py**: UI configuration flow with automatic token extraction
+- **coordinator.py**: Data update coordinator for efficient polling
 - **button.py**: Button entities for door control
+- **test_service.py**: Developer service for testing connections
 
-## Development
+## Credits
 
-The integration implements the Comelit ICONA Bridge protocol directly in Python, supporting:
-- Binary/JSON hybrid protocol communication
-- Channel-based messaging (UAUT, UCFG, CTPP)
-- Proper channel ID management
-- Timeout handling for reliable operation
+This integration was made possible thanks to:
+
+- **[madchicken's comelit-client](https://github.com/madchicken/comelit-client)** - The original Node.js implementation that we reverse-engineered to understand the protocol, especially:
+  - The ICONA Bridge protocol documentation
+  - The binary message structure for door operations
+  - The channel management system
+  - Token extraction methodology
+
+- **Protocol Reverse Engineering** - The complex binary protocol for door operations was decoded by analyzing the comelit-client implementation, particularly:
+  - The specific byte patterns required for door commands (0x18c0, 0x1800, 0x1820)
+  - The message structure with apartment addresses and output indices
+  - The proper sequence of initialization and confirmation messages
 
 ## Troubleshooting
 
 ### Cannot Connect
 - Verify the IP address is correct
-- Ensure the device is on the same network
-- Check that port 64100 is accessible
+- Ensure the device is on the same network as Home Assistant
+- Check that ports 64100 (ICONA Bridge) and 8080 (web interface) are accessible
+- Check Home Assistant logs for detailed error messages
+
+### Token Extraction Failed
+- Verify your device uses the default 'comelit' password
+- Try extracting the token manually (see link above)
+- Ensure port 8080 is accessible for the web interface
+- Check if your device creates encrypted backups (some firmware versions)
 
 ### Invalid Authentication
-- Double-check your user token
-- Ensure the token hasn't expired
-- Try generating a new token
+- Token may have changed (regenerate if needed)
+- Device might have been reset
+- Try the automatic extraction again
 
 ### Doors Not Appearing
-- Check the Home Assistant logs
-- Verify doors are configured in your Comelit app
-- Try reloading the integration
+- Check that doors are configured in your Comelit mobile app first
+- Verify the device config contains door entries
+- Try using the test service to debug: Developer Tools → Services → comelit.test_connection
+- Check logs for configuration data
+
+### Known Issues
+- Some Comelit devices may have encrypted backups, preventing automatic token extraction
+- Connection issues on macOS with Python 3.13 (being investigated)
+- Very old firmware versions may use a different protocol
+
+## Developer Information
+
+### Test Service
+
+The integration provides a `comelit.test_connection` service for debugging:
+```yaml
+service: comelit.test_connection
+data:
+  ip: "192.168.1.100"
+  token: "your_token_here"
+```
+
+This will test the connection and report available doors in the logs.
+
+### Protocol Implementation
+
+The Python implementation handles:
+- Binary/JSON message encoding/decoding
+- Channel lifecycle management with proper IDs
+- Timeout handling for unreliable device responses
+- Proper byte alignment and null termination
+- Request ID tracking
+
+For protocol analysis tools and captures, see the comelit_cli_mqtt_bridge tests directory.
 
 ## License
 
-This project is licensed under the GPL-3.0 License - see the original repository for details.
+This project is licensed under the GPL-3.0 License.
 
-## Credits
+## Disclaimer
 
-- Based on reverse engineering work by [madchicken](https://github.com/madchicken/comelit-client)
-- Inspired by the MQTT bridge implementation
+This integration is not affiliated with or endorsed by Comelit Group S.p.A. It's a community project based on reverse engineering efforts.

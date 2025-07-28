@@ -15,13 +15,14 @@ from homeassistant.exceptions import HomeAssistantError
 
 from .comelit_client import IconaBridgeClient
 from .const import DOMAIN
+from .token_extractor import extract_token
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
-        vol.Required(CONF_TOKEN): str,
+        vol.Optional(CONF_TOKEN): str,
     }
 )
 
@@ -37,6 +38,32 @@ class InvalidAuth(HomeAssistantError):
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     _LOGGER.info("Starting validation for Comelit device at %s", data[CONF_HOST])
+    
+    # If no token provided, try to extract it automatically
+    token = data.get(CONF_TOKEN)
+    if not token:
+        _LOGGER.info("No token provided, attempting automatic extraction")
+        
+        try:
+            token = await asyncio.wait_for(
+                extract_token(data[CONF_HOST]), 
+                timeout=30.0
+            )
+        except asyncio.TimeoutError:
+            _LOGGER.error("Token extraction timed out after 30 seconds")
+            token = None
+        except Exception as e:
+            _LOGGER.error(f"Token extraction failed with error: {e}")
+            token = None
+            
+        if not token:
+            raise InvalidAuth("Failed to extract token automatically. Please check that the device is accessible and using the default 'comelit' password, or enter your token manually.")
+            
+        _LOGGER.info("Successfully extracted token automatically")
+        # Update data with extracted token
+        data = dict(data)
+        data[CONF_TOKEN] = token
+    
     client = IconaBridgeClient(data[CONF_HOST])
     
     try:
@@ -85,7 +112,10 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         await client.shutdown()
         
         # Return info that you want to store in the config entry
-        return {"title": f"Comelit ({data[CONF_HOST]})"}
+        return {
+            "title": f"Comelit ({data[CONF_HOST]})",
+            "token": data.get(CONF_TOKEN)  # Include token in case it was extracted
+        }
         
     except asyncio.TimeoutError as e:
         _LOGGER.error("Operation timeout while communicating with device: %s", e)
@@ -115,27 +145,44 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         if user_input is None:
             return self.async_show_form(
-                step_id="user", data_schema=STEP_USER_DATA_SCHEMA
+                step_id="user", 
+                data_schema=STEP_USER_DATA_SCHEMA,
+                description_placeholders={
+                    "token_help": "Leave token empty to try automatic extraction"
+                }
             )
             
         errors = {}
+        validated_data = None
         
         try:
             info = await validate_input(self.hass, user_input)
+            # Get the potentially updated data (with extracted token)
+            validated_data = user_input.copy()
+            if not user_input.get(CONF_TOKEN) and info.get("token"):
+                validated_data[CONF_TOKEN] = info["token"]
         except CannotConnect:
             errors["base"] = "cannot_connect"
-        except InvalidAuth:
+        except InvalidAuth as e:
             errors["base"] = "invalid_auth"
+            # If auto-extraction failed, show more helpful error
+            if "extract token automatically" in str(e):
+                errors["base"] = "auto_token_failed"
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Unexpected exception")
             errors["base"] = "unknown"
         else:
             # Check if already configured
-            await self.async_set_unique_id(user_input[CONF_HOST])
+            await self.async_set_unique_id(validated_data[CONF_HOST])
             self._abort_if_unique_id_configured()
             
-            return self.async_create_entry(title=info["title"], data=user_input)
+            return self.async_create_entry(title=info["title"], data=validated_data)
             
         return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+            step_id="user", 
+            data_schema=STEP_USER_DATA_SCHEMA, 
+            errors=errors,
+            description_placeholders={
+                "token_help": "Leave token empty to try automatic extraction"
+            }
         )

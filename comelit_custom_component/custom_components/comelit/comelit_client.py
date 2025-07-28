@@ -9,20 +9,20 @@ from dataclasses import dataclass
 from enum import IntEnum
 
 
-# Constants
-ICONA_BRIDGE_PORT = 64100
-HEADER_MAGIC = b'\x00\x06'
-HEADER_SIZE = 8
+# Protocol Constants
+ICONA_BRIDGE_PORT = 64100  # TCP port for ICONA Bridge protocol
+HEADER_MAGIC = b'\x00\x06'  # All messages start with these magic bytes
+HEADER_SIZE = 8  # Fixed header size: magic(2) + length(2) + request_id(2) + padding(2)
 NULL = b'\x00'
 
 
 class MessageType(IntEnum):
-    """Binary message types"""
-    COMMAND = 0xabcd
-    END = 0x01ef
-    OPEN_DOOR_INIT = 0x18c0
-    OPEN_DOOR = 0x1800
-    OPEN_DOOR_CONFIRM = 0x1820
+    """Binary message types used in the protocol"""
+    COMMAND = 0xabcd        # Opens a channel
+    END = 0x01ef           # Closes a channel
+    OPEN_DOOR_INIT = 0x18c0  # Initialize door opening sequence
+    OPEN_DOOR = 0x1800      # Send open door command
+    OPEN_DOOR_CONFIRM = 0x1820  # Confirm door opening
 
 
 class ViperChannelType(IntEnum):
@@ -63,6 +63,8 @@ class IconaBridgeClient:
         self.reader: Optional[asyncio.StreamReader] = None
         self.writer: Optional[asyncio.StreamWriter] = None
         self.open_channels: Dict[str, ChannelData] = {}
+        # Start with a semi-random request ID to avoid conflicts
+        # The device tracks requests by ID, so we need unique values
         self.request_id = 8000 + int(asyncio.get_event_loop().time() * 10) % 1000
         
     async def connect(self):
@@ -118,12 +120,19 @@ class IconaBridgeClient:
             self.logger.info("Connection closed")
             
     def _create_header(self, body_length: int, request_id: int = 0) -> bytes:
-        """Create 8-byte message header"""
+        """Create 8-byte message header
+        
+        Header structure:
+        [0:2] Magic bytes (0x00 0x06)
+        [2:4] Body length (little-endian uint16)
+        [4:6] Request ID (little-endian uint16) - 0 for binary commands
+        [6:8] Padding (always 0x00 0x00)
+        """
         header = bytearray(8)
         header[0:2] = HEADER_MAGIC
-        header[2:4] = struct.pack('<H', body_length)
+        header[2:4] = struct.pack('<H', body_length)  # '<H' = little-endian unsigned short
         header[4:6] = struct.pack('<H', request_id)
-        header[6:8] = b'\x00\x00'
+        header[6:8] = b'\x00\x00'  # Required padding
         return bytes(header)
         
     def _create_json_packet(self, request_id: int, data: Dict) -> bytes:
@@ -148,20 +157,22 @@ class IconaBridgeClient:
         
         # Add channel data if provided
         if channel:
-            # For channel type, we need to get the numeric value
+            # Channel type mapping discovered through protocol analysis
+            # These numeric IDs are what the device expects for each channel
+            # Note: The ViperChannelType enum values don't match these!
             channel_type = {
-                'UAUT': 7,
-                'UCFG': 2,
-                'INFO': 20,
-                'CTPP': 16,
-                'CSPB': 17,
-                'PUSH': 2
+                'UAUT': 7,    # Authentication channel
+                'UCFG': 2,    # Configuration channel
+                'INFO': 20,   # Server info channel
+                'CTPP': 16,   # Control channel (door operations)
+                'CSPB': 17,   # Unknown purpose
+                'PUSH': 2     # Push notifications
             }.get(channel, 0)
             
-            body += struct.pack('<I', channel_type)  # Channel type as number
-            body += channel.encode('ascii') + NULL   # Channel name
-            body += struct.pack('<H', request_id)    # Request ID
-            body += NULL                             # Final null
+            body += struct.pack('<I', channel_type)  # Channel type as 4-byte int
+            body += channel.encode('ascii') + NULL   # Channel name as ASCII + null terminator
+            body += struct.pack('<H', request_id)    # Request ID again (protocol requirement)
+            body += NULL                             # Final null terminator
             
         # Add additional data if provided
         if additional_data:
@@ -179,25 +190,31 @@ class IconaBridgeClient:
         await self.writer.drain()
         
     async def _read_response(self) -> Optional[Dict]:
-        """Read and parse a response from the socket"""
-        # Read header
+        """Read and parse a response from the socket
+        
+        The device sends different response types based on the request ID:
+        - request_id == 0: Binary protocol messages (channel operations)
+        - request_id > 0: JSON or binary data responses
+        """
+        # Read the 8-byte header first
         header = await self.reader.readexactly(HEADER_SIZE)
         body_length = struct.unpack('<H', header[2:4])[0]
         request_id = struct.unpack('<H', header[4:6])[0]
         
-        # Read body
+        # Read body if present
         if body_length > 0:
             body = await self.reader.readexactly(body_length)
             self.logger.debug(f"Read {len(body)} bytes: {body.hex(' ')}")
             
-            # Parse response
+            # Parse response based on request_id
             if request_id == 0:
-                # Binary response - parse the body
+                # Binary response - these are responses to channel operations
                 msg_type = struct.unpack('<H', body[0:2])[0]
                 sequence = struct.unpack('<H', body[2:4])[0]
                 
                 if msg_type == MessageType.COMMAND:
-                    # Channel open response includes the channel ID
+                    # Channel open response includes the channel ID assigned by the device
+                    # This ID is crucial - we must use it for all subsequent operations on this channel
                     # Format: msg_type(2) + sequence(2) + value(4) + channel_id(2) + padding
                     channel_id = None
                     if len(body) >= 10:
@@ -211,6 +228,7 @@ class IconaBridgeClient:
                         'request_id': request_id
                     }
                 elif msg_type == MessageType.END:
+                    # Channel close acknowledgment
                     return {
                         'type': 'binary',
                         'message_type': msg_type,
@@ -218,8 +236,9 @@ class IconaBridgeClient:
                         'request_id': request_id
                     }
             else:
-                # Check if it's JSON
-                if body[0] == 0x7b:  # '{'
+                # Non-zero request_id means this is a data response
+                # Check first byte to determine if it's JSON
+                if body[0] == 0x7b:  # '{' character indicates JSON
                     json_data = json.loads(body.decode('utf-8'))
                     return {
                         'type': 'json',
@@ -227,7 +246,7 @@ class IconaBridgeClient:
                         'data': json_data
                     }
                 else:
-                    # Binary data response
+                    # Binary data response (e.g., from door operations)
                     return {
                         'type': 'binary_data',
                         'request_id': request_id,
@@ -279,27 +298,36 @@ class IconaBridgeClient:
         return False
         
     async def authenticate(self, token: str) -> int:
-        """Authenticate with the ICONA Bridge"""
+        """Authenticate with the ICONA Bridge
+        
+        Returns:
+            200: Success
+            403: Invalid token
+            500: Server error or no response
+        """
         # Open authentication channel
         channel = await self._open_channel(Channel.UAUT)
         
-        # Send authentication message
+        # Build authentication message
+        # The 'message-id' field must be numeric 2, not the string channel name
+        # This is a quirk of the protocol - different contexts use different ID types
         auth_data = {
             'message': 'access',
             'user-token': token,
             'message-type': 'request',
-            'message-id': 2  # Must be 2, not ViperChannelType.UAUT (which is a string)
+            'message-id': 2  # Must be 2, not ViperChannelType.UAUT
         }
         packet = self._create_json_packet(channel.id, auth_data)
         await self._write_packet(packet)
         
-        # Read response
+        # Read authentication response
         response = await self._read_response()
         if response and response['type'] == 'json':
             code = response['data'].get('response-code', 500)
             await self._close_channel(channel)
             return code
         
+        # No valid response received
         await self._close_channel(channel)
         return 500
         
@@ -342,27 +370,35 @@ class IconaBridgeClient:
         return b
         
     async def _open_door_init(self, vip: Dict):
-        """Initialize door opening sequence"""
+        """Initialize door opening sequence
+        
+        This establishes a control channel (CTPP) for the apartment.
+        The init message contains specific byte patterns that the device
+        expects for proper door control authorization.
+        """
         apt_address = f"{vip['apt-address']}{vip.get('apt-subaddress', '')}"
         channel = await self._open_channel(Channel.CTPP, apt_address)
         
-        # Send unknown init message
+        # Build initialization message with specific byte patterns
+        # These bytes were discovered through protocol analysis and must be exact
         buffers = [
-            bytes([0xc0, 0x18, 0x5c, 0x8b]),
-            bytes([0x2b, 0x73, 0x00, 0x11]),
-            bytes([0x00, 0x40, 0xac, 0x23]),
-            self._string_to_buffer(apt_address, True),
-            bytes([0x10, 0x0e]),
-            bytes([0x00, 0x00, 0x00, 0x00]),
-            bytes([0xff, 0xff, 0xff, 0xff]),
-            self._string_to_buffer(apt_address, True),
-            self._string_to_buffer(vip['apt-address'], True),
+            bytes([0xc0, 0x18, 0x5c, 0x8b]),  # Message type and fixed pattern
+            bytes([0x2b, 0x73, 0x00, 0x11]),  # Fixed pattern (possibly version/flags)
+            bytes([0x00, 0x40, 0xac, 0x23]),  # Fixed pattern
+            self._string_to_buffer(apt_address, True),  # Full apartment address
+            bytes([0x10, 0x0e]),               # Fixed values
+            bytes([0x00, 0x00, 0x00, 0x00]),  # Padding
+            bytes([0xff, 0xff, 0xff, 0xff]),  # All-ones pattern (broadcast/wildcard?)
+            self._string_to_buffer(apt_address, True),  # Apartment address again
+            self._string_to_buffer(vip['apt-address'], True),  # Base address without subaddress
             NULL
         ]
         packet = self._create_binary_packet_from_buffers(channel.id, *buffers)
         await self._write_packet(packet)
         
-        # Read two responses with timeout
+        # The device sends two responses to initialization
+        # These often timeout on some firmware versions, but the channel
+        # is still established successfully
         try:
             await asyncio.wait_for(self._read_response(), timeout=2.0)
             await asyncio.wait_for(self._read_response(), timeout=2.0)
@@ -370,40 +406,55 @@ class IconaBridgeClient:
             self.logger.warning("Timeout waiting for CTPP init responses - continuing anyway")
         
     async def open_door(self, vip: Dict, door_item: Dict):
-        """Open a specific door"""
-        # Initialize if needed
+        """Open a specific door
+        
+        The door opening sequence involves multiple steps:
+        1. Initialize CTPP channel if not already open
+        2. Send open door command (0x1800) and confirmation (0x1820)
+        3. Send door-specific initialization
+        4. Repeat open door command and confirmation
+        
+        This redundancy ensures reliability across different firmware versions.
+        """
+        # Initialize control channel if needed
         if Channel.CTPP not in self.open_channels:
             await self._open_door_init(vip)
             
         channel = self.open_channels[Channel.CTPP]
         
-        # Helper function to create door messages
+        # Helper function to create door command messages
         def create_door_message(confirm: bool = False) -> bytes:
+            # Two message types: OPEN_DOOR (0x1800) and OPEN_DOOR_CONFIRM (0x1820)
+            # Both are required for the door to actually open
             msg_type = MessageType.OPEN_DOOR_CONFIRM if confirm else MessageType.OPEN_DOOR
             buffers = [
-                struct.pack('<H', msg_type),
-                bytes([0x5c, 0x8b]),
-                bytes([0x2c, 0x74, 0x00, 0x00]),
-                bytes([0xff, 0xff, 0xff, 0xff]),
+                struct.pack('<H', msg_type),      # Message type
+                bytes([0x5c, 0x8b]),              # Fixed pattern (always present in door messages)
+                bytes([0x2c, 0x74, 0x00, 0x00]), # Fixed pattern
+                bytes([0xff, 0xff, 0xff, 0xff]), # Broadcast/wildcard pattern
+                # Apartment address + output index identifies the specific door/actuator
                 self._string_to_buffer(f"{vip['apt-address']}{door_item['output-index']}", True),
-                self._string_to_buffer(door_item['apt-address'], True),
+                self._string_to_buffer(door_item['apt-address'], True),  # Door's apartment address
                 NULL
             ]
             return self._create_binary_packet_from_buffers(channel.id, *buffers)
             
-        # Send open door command and confirmation
-        await self._write_packet(create_door_message(False))
-        await self._write_packet(create_door_message(True))
+        # First door command sequence
+        await self._write_packet(create_door_message(False))  # OPEN_DOOR
+        await self._write_packet(create_door_message(True))   # OPEN_DOOR_CONFIRM
         
-        # Send init message for this specific door
+        # Send door-specific initialization
+        # This message has slightly different byte patterns than the channel init
         buffers = [
-            bytes([0xc0, 0x18, 0x70, 0xab]),
-            bytes([0x29, 0x9f, 0x00, 0x0d]),
-            bytes([0x00, 0x2d]),
+            bytes([0xc0, 0x18, 0x70, 0xab]),  # Different from channel init (0x70 vs 0x5c)
+            bytes([0x29, 0x9f, 0x00, 0x0d]),  # Different pattern
+            bytes([0x00, 0x2d]),               # Different value
             self._string_to_buffer(door_item['apt-address'], True),
             NULL,
+            # Output index as 4-byte little-endian integer
+            # This identifies which relay/actuator to trigger
             bytes([int(door_item['output-index']), 0x00, 0x00, 0x00]),
-            bytes([0xff, 0xff, 0xff, 0xff]),
+            bytes([0xff, 0xff, 0xff, 0xff]),  # Broadcast pattern
             self._string_to_buffer(f"{vip['apt-address']}{door_item['output-index']}", True),
             self._string_to_buffer(door_item['apt-address'], True),
             NULL
@@ -411,18 +462,21 @@ class IconaBridgeClient:
         packet = self._create_binary_packet_from_buffers(channel.id, *buffers)
         await self._write_packet(packet)
         
-        # Read responses with timeout
+        # Wait for initialization responses
+        # Like channel init, these may timeout but that's normal
         try:
             await asyncio.wait_for(self._read_response(), timeout=2.0)
             await asyncio.wait_for(self._read_response(), timeout=2.0)
         except asyncio.TimeoutError:
             self.logger.warning("Timeout waiting for door init responses - continuing anyway")
         
-        # Send final open door command and confirmation
-        await self._write_packet(create_door_message(False))
-        await self._write_packet(create_door_message(True))
+        # Send final door command sequence
+        # This redundancy improves reliability - some devices need both sequences
+        await self._write_packet(create_door_message(False))  # OPEN_DOOR
+        await self._write_packet(create_door_message(True))   # OPEN_DOOR_CONFIRM
         
-        # Don't wait for final responses - the door should open regardless
+        # Don't wait for final responses - the door actuator triggers immediately
+        # and the device may not send acknowledgments
         self.logger.info(f"Door '{door_item.get('name', 'Unknown')}' open command sent")
 
 

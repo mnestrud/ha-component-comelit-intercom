@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+
+# Scripts with potential sensitive data
+get_token.sh
+
+# Logs and temporary files
+*.log
+ha.log
+home-assistant.log
+
+# Home Assistant config with sensitive data
+config/.storage/
+config/home-assistant.log
+config/.HA_VERSION
+config/home-assistant_v2.db*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

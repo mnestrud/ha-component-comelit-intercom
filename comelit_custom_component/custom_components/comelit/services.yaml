@@ -5,10 +5,12 @@ test_connection:
     ip:
       name: IP Address
       description: IP address of the Comelit device
-      required: true
+      required: false
+      default: ""
       example: "192.168.1.100"
     token:
       name: Token
       description: Authentication token
-      required: true
+      required: false
+      default: ""
       example: "your_token_here"
