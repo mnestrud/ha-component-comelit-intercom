@@ -148,13 +148,20 @@ class IconaBridgeClient:
         
         # Add channel data if provided
         if channel:
-            channel_bytes = channel.encode('ascii')
-            # Size includes channel name + request_id (2) + null (1)
-            channel_size = len(channel_bytes) + 3
-            body += struct.pack('<I', channel_size)
-            body += channel_bytes + NULL
-            body += struct.pack('<H', request_id)
-            body += NULL
+            # For channel type, we need to get the numeric value
+            channel_type = {
+                'UAUT': 7,
+                'UCFG': 2,
+                'INFO': 20,
+                'CTPP': 16,
+                'CSPB': 17,
+                'PUSH': 2
+            }.get(channel, 0)
+            
+            body += struct.pack('<I', channel_type)  # Channel type as number
+            body += channel.encode('ascii') + NULL   # Channel name
+            body += struct.pack('<H', request_id)    # Request ID
+            body += NULL                             # Final null
             
         # Add additional data if provided
         if additional_data:
@@ -185,17 +192,22 @@ class IconaBridgeClient:
             
             # Parse response
             if request_id == 0:
-                # Binary response with request ID at end
+                # Binary response - parse the body
                 msg_type = struct.unpack('<H', body[0:2])[0]
                 sequence = struct.unpack('<H', body[2:4])[0]
                 
                 if msg_type == MessageType.COMMAND:
-                    # For COMMAND responses, the body is just the 4 bytes we already read
-                    # No additional data to extract
+                    # Channel open response includes the channel ID
+                    # Format: msg_type(2) + sequence(2) + value(4) + channel_id(2) + padding
+                    channel_id = None
+                    if len(body) >= 10:
+                        channel_id = struct.unpack('<H', body[8:10])[0]
+                    
                     return {
                         'type': 'binary',
                         'message_type': msg_type,
                         'sequence': sequence,
+                        'channel_id': channel_id,  # This is the ID to use for this channel!
                         'request_id': request_id
                     }
                 elif msg_type == MessageType.END:
@@ -242,8 +254,11 @@ class IconaBridgeClient:
         response = await self._read_response()
         if response and response['type'] == 'binary' and response['sequence'] == 2:
             channel_data.sequence = response['sequence']
+            # IMPORTANT: Use the channel ID from the response, not our request ID!
+            if 'channel_id' in response and response['channel_id']:
+                channel_data.id = response['channel_id']
+                self.logger.debug(f"Channel {channel} opened with server ID {response['channel_id']} (our request ID was {self.request_id})")
             self.open_channels[channel] = channel_data
-            self.logger.debug(f"Opened channel {channel} with ID {self.request_id}")
             return channel_data
         else:
             raise Exception(f"Failed to open channel {channel}")
@@ -273,7 +288,7 @@ class IconaBridgeClient:
             'message': 'access',
             'user-token': token,
             'message-type': 'request',
-            'message-id': ViperChannelType.UAUT
+            'message-id': 2  # Must be 2, not ViperChannelType.UAUT (which is a string)
         }
         packet = self._create_json_packet(channel.id, auth_data)
         await self._write_packet(packet)
@@ -347,9 +362,12 @@ class IconaBridgeClient:
         packet = self._create_binary_packet_from_buffers(channel.id, *buffers)
         await self._write_packet(packet)
         
-        # Read two responses
-        await self._read_response()
-        await self._read_response()
+        # Read two responses with timeout
+        try:
+            await asyncio.wait_for(self._read_response(), timeout=2.0)
+            await asyncio.wait_for(self._read_response(), timeout=2.0)
+        except asyncio.TimeoutError:
+            self.logger.warning("Timeout waiting for CTPP init responses - continuing anyway")
         
     async def open_door(self, vip: Dict, door_item: Dict):
         """Open a specific door"""
@@ -393,15 +411,19 @@ class IconaBridgeClient:
         packet = self._create_binary_packet_from_buffers(channel.id, *buffers)
         await self._write_packet(packet)
         
-        # Read responses
-        await self._read_response()
-        await self._read_response()
+        # Read responses with timeout
+        try:
+            await asyncio.wait_for(self._read_response(), timeout=2.0)
+            await asyncio.wait_for(self._read_response(), timeout=2.0)
+        except asyncio.TimeoutError:
+            self.logger.warning("Timeout waiting for door init responses - continuing anyway")
         
         # Send final open door command and confirmation
         await self._write_packet(create_door_message(False))
         await self._write_packet(create_door_message(True))
         
-        self.logger.info(f"Door '{door_item.get('name', 'Unknown')}' opened")
+        # Don't wait for final responses - the door should open regardless
+        self.logger.info(f"Door '{door_item.get('name', 'Unknown')}' open command sent")
 
 
 # High-level convenience functions

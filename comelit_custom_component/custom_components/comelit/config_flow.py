@@ -36,6 +36,7 @@ class InvalidAuth(HomeAssistantError):
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
+    _LOGGER.info("Starting validation for Comelit device at %s", data[CONF_HOST])
     client = IconaBridgeClient(data[CONF_HOST])
     
     try:
@@ -86,13 +87,21 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         # Return info that you want to store in the config entry
         return {"title": f"Comelit ({data[CONF_HOST]})"}
         
-    except asyncio.TimeoutError:
-        _LOGGER.error("Operation timeout while communicating with device")
+    except asyncio.TimeoutError as e:
+        _LOGGER.error("Operation timeout while communicating with device: %s", e)
+        _LOGGER.error("This could be during connect, auth, or config retrieval")
         await client.shutdown()
         raise CannotConnect("Device communication timeout")
-    except Exception as err:
+    except InvalidAuth:
         await client.shutdown()
         raise
+    except CannotConnect:
+        await client.shutdown()
+        raise
+    except Exception as err:
+        _LOGGER.exception("Unexpected error during validation: %s", err)
+        await client.shutdown()
+        raise CannotConnect(f"Unexpected error: {err}")
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):

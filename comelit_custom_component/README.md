@@ -59,11 +59,11 @@ This integration includes:
 
 ## Development
 
-To test the library independently:
-```bash
-cd /Users/nicolas.fricke/projects/ha-add-ons/comelit_custom_component
-python3 test_library.py
-```
+The integration implements the Comelit ICONA Bridge protocol directly in Python, supporting:
+- Binary/JSON hybrid protocol communication
+- Channel-based messaging (UAUT, UCFG, CTPP)
+- Proper channel ID management
+- Timeout handling for reliable operation
 
 ## Troubleshooting
 
