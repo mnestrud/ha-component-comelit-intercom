@@ -1,0 +1,7 @@
+{
+  "name": "Comelit ICONA Bridge",
+  "content_in_root": false,
+  "render_readme": true,
+  "domains": ["button"],
+  "homeassistant": "2023.1.0"
+}
