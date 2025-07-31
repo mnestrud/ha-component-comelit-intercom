@@ -4,6 +4,7 @@ import logging
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from .comelit_client import IconaBridgeClient
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ async def async_setup_test_service(hass: HomeAssistant):
         if not ip:
             _LOGGER.error("IP address is required")
             hass.states.async_set(
-                "comelit.test_result",
+                f"{DOMAIN}.test_result",
                 "error",
                 {"message": "IP address is required"}
             )
@@ -27,7 +28,7 @@ async def async_setup_test_service(hass: HomeAssistant):
         if not token:
             _LOGGER.error("Token is required")
             hass.states.async_set(
-                "comelit.test_result",
+                f"{DOMAIN}.test_result",
                 "error",
                 {"message": "Token is required"}
             )
@@ -46,14 +47,14 @@ async def async_setup_test_service(hass: HomeAssistant):
                 _LOGGER.info(f"Found {len(doors)} doors: {doors}")
                 
                 hass.states.async_set(
-                    "comelit.test_result",
+                    f"{DOMAIN}.test_result",
                     "success",
                     {"doors": doors, "message": f"Found {len(doors)} doors"}
                 )
             else:
                 _LOGGER.error("Authentication failed")
                 hass.states.async_set(
-                    "comelit.test_result",
+                    f"{DOMAIN}.test_result",
                     "auth_failed",
                     {"message": "Authentication failed"}
                 )
@@ -63,13 +64,13 @@ async def async_setup_test_service(hass: HomeAssistant):
         except Exception as e:
             _LOGGER.error(f"Connection failed: {e}")
             hass.states.async_set(
-                "comelit.test_result",
+                f"{DOMAIN}.test_result",
                 "connection_failed",
                 {"message": str(e)}
             )
     
     hass.services.async_register(
-        "comelit",
+        DOMAIN,
         "test_connection",
         handle_test_connection,
         schema=None

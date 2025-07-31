@@ -113,7 +113,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         
         # Return info that you want to store in the config entry
         return {
-            "title": f"Comelit ({data[CONF_HOST]})",
+            "title": f"Comelit Intercom ({data[CONF_HOST]})",
             "token": data.get(CONF_TOKEN)  # Include token in case it was extracted
         }
         

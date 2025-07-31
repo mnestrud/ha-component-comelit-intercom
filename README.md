@@ -1,15 +1,15 @@
-# Comelit Custom Component for Home Assistant
+# Comelit Intercom for Home Assistant
 
-This is a native Home Assistant integration for Comelit ICONA Bridge intercom systems. It allows you to control your Comelit doors directly from Home Assistant without requiring MQTT or Docker containers.
+This is a native Home Assistant integration for Comelit intercom systems (using the ICONA Bridge protocol). It allows you to control your Comelit doors directly from Home Assistant without requiring MQTT or Docker containers.
 
 ## Features
 
-- Direct TCP communication with Comelit devices (no MQTT bridge needed)
+- Direct TCP communication with Comelit intercom devices (no MQTT bridge needed)
 - **Automatic token extraction** - no manual token retrieval required (if using default password)
 - Automatic discovery of all available doors
 - Creates button entities for each door
 - Simple configuration through Home Assistant UI
-- Works with Comelit devices using the ICONA Bridge protocol
+- Works with Comelit intercom models that support the ICONA Bridge protocol
 
 ## Requirements
 
@@ -22,10 +22,10 @@ This is a native Home Assistant integration for Comelit ICONA Bridge intercom sy
 
 ### Manual Installation
 
-1. Copy the `custom_components/comelit` folder to your Home Assistant's `custom_components` directory
+1. Copy the `custom_components/comelit_intercom` folder to your Home Assistant's `custom_components` directory
 2. Restart Home Assistant
 3. Go to Settings → Devices & Services
-4. Click "Add Integration" and search for "Comelit"
+4. Click "Add Integration" and search for "Comelit Intercom"
 5. Enter your device's IP address
 6. Leave the token field empty for automatic extraction, or provide your token if you know it
 
@@ -160,7 +160,7 @@ This integration was made possible thanks to:
 ### Doors Not Appearing
 - Check that doors are configured in your Comelit mobile app first
 - Verify the device config contains door entries
-- Try using the test service to debug: Developer Tools → Services → comelit.test_connection
+- Try using the test service to debug: Developer Tools → Services → comelit_intercom.test_connection
 - Check logs for configuration data
 
 ### Known Issues
@@ -172,9 +172,9 @@ This integration was made possible thanks to:
 
 ### Test Service
 
-The integration provides a `comelit.test_connection` service for debugging:
+The integration provides a `comelit_intercom.test_connection` service for debugging:
 ```yaml
-service: comelit.test_connection
+service: comelit_intercom.test_connection
 data:
   ip: "192.168.1.100"
   token: "your_token_here"
@@ -200,3 +200,5 @@ This project is licensed under the GPL-3.0 License.
 ## Disclaimer
 
 This integration is not affiliated with or endorsed by Comelit Group S.p.A. It's a community project based on reverse engineering efforts.
+
+**Note**: This integration is specifically for Comelit intercom systems. For Comelit SimpleHome alarm systems, use the [official Comelit integration](https://www.home-assistant.io/integrations/comelit/).

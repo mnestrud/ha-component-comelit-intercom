@@ -1,5 +1,5 @@
 {
-  "domain": "comelit",
+  "domain": "comelit_intercom",
   "name": "Comelit Intercom",
   "codeowners": ["@nicolas-fricke"],
   "config_flow": true,

@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Home Assistant custom component for Comelit ICONA Bridge intercom systems. It provides native integration without requiring MQTT or Docker containers, allowing users to control their Comelit doors directly from Home Assistant.
+This is a Home Assistant custom component for Comelit intercom systems (using the ICONA Bridge protocol). It provides native integration without requiring MQTT or Docker containers, allowing users to control their Comelit doors directly from Home Assistant.
+
+**Note**: This integration is specifically for Comelit intercom systems. It's separate from the official Comelit integration which handles their SimpleHome alarm systems.
 
 ## Development Commands
 
@@ -63,7 +65,7 @@ mypy custom_components/comelit/
    - Updates availability based on coordinator status
 
 6. **test_service.py** - Developer testing service
-   - Provides `comelit.test_connection` service
+   - Provides `comelit_intercom.test_connection` service
    - Useful for debugging connectivity issues
    - Logs discovered doors and connection status
 

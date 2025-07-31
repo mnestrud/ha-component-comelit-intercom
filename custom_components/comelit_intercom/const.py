@@ -1,6 +1,6 @@
 """Constants for the Comelit integration."""
 
-DOMAIN = "comelit"
+DOMAIN = "comelit_intercom"
 
 # Configuration keys
 CONF_HOST = "host"
