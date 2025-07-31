@@ -7,6 +7,11 @@ __pycache__/
 venv/
 ENV/
 env/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 
 # Scripts with potential sensitive data
 get_token.sh
@@ -31,3 +36,9 @@ config/home-assistant_v2.db*
 # OS
 .DS_Store
 Thumbs.db
+
+# Test artifacts
+.tox/
+.nox/
+coverage.xml
+*.cover
