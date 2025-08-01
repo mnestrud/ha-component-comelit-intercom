@@ -20,20 +20,26 @@ This is a native Home Assistant integration for Comelit intercom systems (using 
 
 ## Installation
 
+### HACS Installation (recommended)
+
+1. Ensure you have [HACS](https://hacs.xyz/) installed and set up
+2. Add this repository's URL, `https://github.com/nicolas-fricke/ha-component-comelit-intercom`, as custom repository and select "Integration" (see [docs](https://hacs.xyz/docs/faq/custom_repositories/))
+3. Seach for "Comelit Intercom" and click on "Download"
+4. After this is complete, restart Home Assistant
+
 ### Manual Installation
 
 1. Copy the `custom_components/comelit_intercom` folder to your Home Assistant's `custom_components` directory
 2. Restart Home Assistant
-3. Go to Settings → Devices & Services
-4. Click "Add Integration" and search for "Comelit Intercom"
-5. Enter your device's IP address
-6. Leave the token field empty for automatic extraction, or provide your token if you know it
-
-### HACS Installation (Coming Soon)
-
-This integration will be submitted to HACS for easier installation.
 
 ## Configuration
+
+After you've installed the component on your system, it's time to set it up:
+
+1. Go to Settings → Devices & Services
+2. Click "Add Integration" and search for "Comelit Intercom"
+3. Enter your device's IP address
+4. Leave the token field empty for automatic extraction, or provide your token if you know it
 
 ### Automatic Token Extraction
 
