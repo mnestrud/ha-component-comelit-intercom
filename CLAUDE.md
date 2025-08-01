@@ -13,7 +13,7 @@ This is a Home Assistant custom component for Comelit intercom systems (using th
 ### Testing the Integration
 ```bash
 # Test the Python client library standalone
-python3 custom_components/comelit/comelit_client.py
+python3 custom_components/comelit_intercom/comelit_client.py
 
 # Run Home Assistant with the custom component
 hass -c /path/to/config
@@ -21,12 +21,25 @@ hass -c /path/to/config
 
 ### Code Quality
 ```bash
-# Run Python linting
-pylint custom_components/comelit/
-ruff check custom_components/comelit/
+# Format code with black
+black custom_components/comelit_intercom/
+
+# Check import order with isort
+isort custom_components/comelit_intercom/
+
+# Run Python linting with ruff
+ruff check custom_components/comelit_intercom/
+
+# Auto-fix linting issues
+ruff check custom_components/comelit_intercom/ --fix
 
 # Type checking
-mypy custom_components/comelit/
+mypy custom_components/comelit_intercom/
+
+# Run all checks (as done in CI)
+black --check custom_components/comelit_intercom/
+isort --check-only custom_components/comelit_intercom/
+ruff check custom_components/comelit_intercom/
 ```
 
 ## Architecture

@@ -197,6 +197,10 @@ For protocol analysis tools and captures, see the original comelit-client reposi
 
 This project is licensed under the GPL-3.0 License.
 
+## Development Note
+
+This integration was developed primarily using Claude Code (Anthropic's AI assistant). The entire codebase, including protocol reverse engineering, Python implementation, and Home Assistant integration, was written by Claude Code with supervision, testing, and high-level guidance from the maintainer. This approach allowed for rapid development of a complex integration that might have otherwise taken significantly longer to create manually.
+
 ## Disclaimer
 
 This integration is not affiliated with or endorsed by Comelit Group S.p.A. It's a community project based on reverse engineering efforts.
