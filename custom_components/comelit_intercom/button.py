@@ -40,6 +40,7 @@ class ComelitDoorButton(CoordinatorEntity[ComelitDataUpdateCoordinator], ButtonE
     """Representation of a Comelit door button."""
 
     _attr_has_entity_name = True
+    _attr_icon = "mdi:door-open"
 
     def __init__(
         self,
