@@ -57,8 +57,6 @@ class ComelitDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "opendoor-address-book", []
             )
 
-            await self.client.shutdown()
-
             return {"doors": doors, "vip": self.vip_config}
 
         except ConfigEntryAuthFailed:
@@ -67,14 +65,20 @@ class ComelitDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except Exception as err:
             _LOGGER.error("Error communicating with Comelit device: %s", err)
             raise UpdateFailed(f"Error communicating with device: {err}") from err
+        finally:
+            # Always close the connection after update
+            await self.client.shutdown()
 
     async def async_open_door(self, door_name: str) -> None:
         """Open a specific door."""
+        # Create a separate client instance for door operations
+        # to avoid interfering with the coordinator's update cycle
+        door_client = IconaBridgeClient(self.host)
         try:
-            await self.client.connect()
+            await door_client.connect()
 
             # Authenticate
-            auth_code = await self.client.authenticate(self.token)
+            auth_code = await door_client.authenticate(self.token)
             if auth_code != 200:
                 raise Exception(f"Authentication failed with code {auth_code}")
 
@@ -85,10 +89,11 @@ class ComelitDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 raise Exception(f"Door '{door_name}' not found")
 
             # Open the door
-            await self.client.open_door(self.vip_config, door)
-
-            await self.client.shutdown()
+            await door_client.open_door(self.vip_config, door)
 
         except Exception as err:
             _LOGGER.error("Error opening door %s: %s", door_name, err)
             raise
+        finally:
+            # Always clean up the door client connection
+            await door_client.shutdown()
