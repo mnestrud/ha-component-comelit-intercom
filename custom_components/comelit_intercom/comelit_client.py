@@ -535,6 +535,13 @@ class IconaBridgeClient:
         # and the device may not send acknowledgments
         self.logger.info(f"Door '{door_item.get('name', 'Unknown')}' open command sent")
 
+        # Always close the CTPP channel so subsequent connections don't get stuck
+        # waiting for the previous session to timeout on the device.
+        try:
+            await self._close_channel(channel)
+        except Exception as err:  # pragma: no cover - best effort cleanup
+            self.logger.debug("Failed to close CTPP channel cleanly: %s", err)
+
 
 # High-level convenience functions
 async def list_doors(host: str, token: str) -> list[dict[str, Any]]:
