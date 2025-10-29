@@ -85,6 +85,10 @@ class IconaBridgeClient:
                 asyncio.open_connection(self.host, self.port), timeout=10.0
             )
             self.logger.info("Connected")
+            # Ensure we start with a clean channel state for every new socket
+            # session. If a previous close operation failed, we don't want to
+            # reuse stale channel metadata with the new connection.
+            self.open_channels.clear()
 
         except TimeoutError as e:
             self.logger.error(f"Connection timeout to {self.host}:{self.port}")
@@ -139,6 +143,8 @@ class IconaBridgeClient:
             self.writer.close()
             await self.writer.wait_closed()
             self.logger.info("Connection closed")
+        # Drop any cached channel state so a future connection starts fresh.
+        self.open_channels.clear()
 
     def _create_header(self, body_length: int, request_id: int = 0) -> bytes:
         """Create 8-byte message header
@@ -326,11 +332,27 @@ class IconaBridgeClient:
         )
         await self._write_packet(packet)
 
-        response = await self._read_response()
+        try:
+            response = await self._read_response()
+        except Exception as err:  # pragma: no cover - defensive cleanup
+            self.logger.debug(
+                "Failed to read close response for %s channel: %s",
+                channel_data.channel,
+                err,
+            )
+            response = None
+
+        # Always forget the channel locally so we never reuse stale metadata.
+        self.open_channels.pop(channel_data.channel, None)
+
         if response and response["type"] == "binary":
-            del self.open_channels[channel_data.channel]
             self.logger.debug(f"Closed channel {channel_data.channel}")
             return True
+
+        self.logger.debug(
+            "Channel %s closed locally without explicit acknowledgment",
+            channel_data.channel,
+        )
         return False
 
     async def authenticate(self, token: str) -> int:
