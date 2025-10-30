@@ -25,7 +25,6 @@ class ComelitDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.entry = entry
         self.host = entry.data[CONF_HOST]
         self.token = entry.data[CONF_TOKEN]
-        self.client = IconaBridgeClient(self.host)
         self.vip_config: dict[str, Any] = {}
 
         super().__init__(
@@ -37,18 +36,20 @@ class ComelitDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from Comelit."""
+        client = IconaBridgeClient(self.host)
+
         try:
-            await self.client.connect()
+            await client.connect()
 
             # Authenticate
-            auth_code = await self.client.authenticate(self.token)
+            auth_code = await client.authenticate(self.token)
             if auth_code != 200:
                 raise ConfigEntryAuthFailed(
                     f"Authentication failed with code {auth_code}"
                 )
 
             # Get configuration
-            config = await self.client.get_config("all")
+            config = await client.get_config("all")
             if not config or "vip" not in config:
                 raise UpdateFailed("Failed to get configuration from device")
 
@@ -67,7 +68,7 @@ class ComelitDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed(f"Error communicating with device: {err}") from err
         finally:
             # Always close the connection after update
-            await self.client.shutdown()
+            await client.shutdown()
 
     async def async_open_door(self, door_name: str) -> None:
         """Open a specific door."""
